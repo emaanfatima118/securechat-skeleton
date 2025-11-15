@@ -59,7 +59,7 @@ def rsa_sign(data, private_key) -> str:
         hashes.SHA256()
     )
     
-    return base64.b64encode(signature).decode('ascii')
+    return b64e(signature)  # ✅ Use b64e
 
 def rsa_verify(data, signature_b64: str, public_key) -> bool:
     """
@@ -77,7 +77,7 @@ def rsa_verify(data, signature_b64: str, public_key) -> bool:
         data = data.encode('utf-8')
     
     try:
-        signature = base64.b64decode(signature_b64)
+        signature = b64d(signature_b64)  # ✅ Use b64d
         public_key.verify(
             signature,
             data,
