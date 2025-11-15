@@ -411,7 +411,7 @@ class ClientHandler:
         # Log to transcript
         self.transcript_mgr.log_message(seqno, ts, ct, sig, self.server_cert)
     
-    
+    def teardown(self):
         """Phase 4: Teardown - Generate and exchange receipts"""
         print("[*] Teardown: Generating non-repudiation receipt")
         
