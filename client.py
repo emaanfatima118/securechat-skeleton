@@ -379,6 +379,36 @@ class SecureChatClient:
         self.last_seqno = seqno
         return True
     
+    def teardown(self):
+        """Phase 4: Teardown - Generate and exchange receipts"""
+        print("\n[*] Teardown: Generating non-repudiation receipt")
+        
+        if not self.transcript_mgr or not self.transcript_mgr.transcript:
+            print("[!] No messages exchanged, skipping receipt generation")
+            return
+        
+        # Generate receipt
+        receipt = self.transcript_mgr.generate_receipt(self.client_key)
+        
+        if not receipt:
+            print("[!] Failed to generate receipt")
+            return
+        
+        # Send receipt to server
+        try:
+            Protocol.send_message(self.sock, receipt)
+            print("[+] Receipt sent to server")
+        except Exception as e:
+            print(f"[!] Failed to send receipt: {e}")
+        
+        # Try to receive server receipt (may already have it from receive thread)
+        try:
+            self.sock.settimeout(2.0)  # Wait 2 seconds
+            server_receipt = Protocol.recv_message(self.sock)
+            if server_receipt and server_receipt.get('type') == 'receipt':
+                self.transcript_mgr.save_peer_receipt(server_receipt)
+        except Exception as e:
+            print(f"[!] Could not receive server receipt (may already have it)")
     def run(self):
         """Main client flow"""
         print("="*60)
