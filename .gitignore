@@ -1,0 +1,24 @@
+# Certificates and Keys (NEVER COMMIT!)
+certs/
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+
+# Database
+.env
+
+# Transcripts
+transcripts/
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+*.pcap
+*.pcapng

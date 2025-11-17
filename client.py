@@ -45,6 +45,9 @@ class SecureChatClient:
         self.last_seqno = -1
         self.transcript_mgr = None
         self.running = True
+
+        self.saved_message = None 
+
         
     def connect(self) -> bool:
         """Connect to server"""
@@ -303,6 +306,95 @@ class SecureChatClient:
         sig = sign.rsa_sign(data_to_sign, self.client_key)
         
         # print(f"[DEBUG CLIENT] sig[:50]={sig[:50]}")
+        
+        msg = Protocol.create_encrypted_message(seqno, ts, ct, sig)
+        Protocol.send_message(self.sock, msg)
+        
+        # Log to transcript
+        self.transcript_mgr.log_message(seqno, ts, ct, sig, self.client_cert)
+
+
+# tampering test
+    # def send_message(self, plaintext: str):
+    #     """Send encrypted and signed message"""
+    #     seqno = len(self.transcript_mgr.transcript)
+    #     ts = get_timestamp()
+        
+    #     # Encrypt message
+    #     ct = aes.aes_encrypt(plaintext.encode('utf-8'), self.session_key)
+        
+    #     # TAMPER: Corrupt the ciphertext (flip last character)
+    #     if plaintext.startswith("TAMPER"):
+    #         print("[!] TAMPERING: Corrupting ciphertext...")
+    #         ct = ct[:-1] + ('X' if ct[-1] != 'X' else 'Y')
+        
+    #     # Sign: RSA_SIGN(SHA256(seqno||ts||ct))
+    #     data_to_sign = f"{seqno}||{ts}||{ct}".encode('utf-8')
+    #     sig = sign.rsa_sign(data_to_sign, self.client_key)
+        
+    #     msg = Protocol.create_encrypted_message(seqno, ts, ct, sig)
+    #     Protocol.send_message(self.sock, msg)
+        
+    #     # Log to transcript
+    #     self.transcript_mgr.log_message(seqno, ts, ct, sig, self.client_cert)
+# replay attack testing
+# add self.saved_message = None  (to init)
+    # def send_message(self, plaintext: str):
+        """Send encrypted and signed message"""
+        
+        # REPLAY: If user types REPLAY, resend the saved message
+        if plaintext == "REPLAY":
+            if hasattr(self, 'saved_message') and self.saved_message:
+                print("[!] REPLAYING old message...")
+                Protocol.send_message(self.sock, self.saved_message)
+                # Don't log to transcript - we're replaying, not creating new
+                return
+            else:
+                print("[!] No saved message to replay")
+                return
+        
+        # Normal flow: Create new message
+        seqno = len(self.transcript_mgr.transcript)
+        ts = get_timestamp()
+        
+        # Encrypt message
+        ct = aes.aes_encrypt(plaintext.encode('utf-8'), self.session_key)
+        
+        # Sign: RSA_SIGN(SHA256(seqno||ts||ct))
+        data_to_sign = f"{seqno}||{ts}||{ct}".encode('utf-8')
+        sig = sign.rsa_sign(data_to_sign, self.client_key)
+        
+        msg = Protocol.create_encrypted_message(seqno, ts, ct, sig)
+        
+        # SAVE: If user types SAVE, save this message for replay
+        if plaintext == "SAVE":
+            self.saved_message = msg
+            print("[!] Message saved for replay")
+        
+        # Send message
+        Protocol.send_message(self.sock, msg)
+        
+        # Log to transcript
+        self.transcript_mgr.log_message(seqno, ts, ct, sig, self.client_cert)
+
+      
+# Tamper testing
+    # def send_message(self, plaintext: str):
+        """Send encrypted and signed message"""
+        seqno = len(self.transcript_mgr.transcript)
+        ts = get_timestamp()
+        
+        # Encrypt message
+        ct = aes.aes_encrypt(plaintext.encode('utf-8'), self.session_key)
+        
+        # TAMPER: Corrupt the ciphertext (flip last character)
+        if plaintext.startswith("TAMPER"):
+            print("[!] TAMPERING: Corrupting ciphertext...")
+            ct = ct[:-1] + ('X' if ct[-1] != 'X' else 'Y')
+        
+        # Sign: RSA_SIGN(SHA256(seqno||ts||ct))
+        data_to_sign = f"{seqno}||{ts}||{ct}".encode('utf-8')
+        sig = sign.rsa_sign(data_to_sign, self.client_key)
         
         msg = Protocol.create_encrypted_message(seqno, ts, ct, sig)
         Protocol.send_message(self.sock, msg)
